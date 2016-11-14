@@ -5,7 +5,7 @@ from RemoteProcessClient import RemoteProcessClient
 from model.Move import Move
 
 import os
-os.chdir("E:\\projects\\russianaicup2016\\local-runner-ru")
+os.chdir("..\\local-runner-ru")
 os.system("local-runner-sync.bat")
 
 import time

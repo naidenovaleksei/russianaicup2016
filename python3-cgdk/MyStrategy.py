@@ -181,7 +181,7 @@ class MyStrategy:
 
         self.initialize_strategy(me, game)
         self.initialize_tick(me, world, game, move)
-        self.map.initTick(me, world, game)
+        self.map.init_tick(me, world, game)
 
         # training_points = [
         #     Point2D(200, 3500),
