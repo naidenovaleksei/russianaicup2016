@@ -230,6 +230,9 @@ class MyStrategy:
                 # // ... то поворачиваемся к цели.
                 move.turn = angle
 
+                if self.debug:
+                    with self.debug.post() as dbg:
+                        dbg.fill_circle(nearest_target.x, nearest_target.y, 15, self.red)
                 # // Если цель перед нами, ...
                 if abs(angle) < game.staff_sector / 2.0:
                     # // ... то атакуем.
@@ -238,9 +241,6 @@ class MyStrategy:
                         if abs(self.world.tick_index - self._last_attack_tick_index) > self.game.magic_missile_cooldown_ticks:
                             self._last_attack_tick_index = self.world.tick_index
                             self.log['attack']()
-                    if self.debug:
-                        with self.debug.post() as dbg:
-                            dbg.fill_circle(nearest_target.x, nearest_target.y, 10, self.red)
                     move.action = ActionType.MAGIC_MISSILE
                     move.cast_angle = angle
                     move.min_cast_distance = distance - nearest_target.radius + game.magic_missile_radius

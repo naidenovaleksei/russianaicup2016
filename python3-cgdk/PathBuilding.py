@@ -45,6 +45,7 @@ class VisibleMap:
         dist = pos.get_distance_to_unit(goal)
         return 1 / dist if dist > 0 else float("inf")
 
+    # TODO: skip potential if an object do not lay on your path
     def get_score_to_neutral(self, point: Point2D, unit: CircularUnit):
         neutral_coef = - 0.01
 
@@ -93,8 +94,10 @@ class VisibleMap:
         #     my_position.y += forward_speed * math.sin(angle) + strafe_speed * math.sin(strafe_angle)
         #     angle += turn
         angle += turn * n_ticks_forward / 2
-        dx = forward_speed * math.cos(angle) + strafe_speed * math.cos(strafe_angle)
-        dy = forward_speed * math.sin(angle) + strafe_speed * math.sin(strafe_angle)
+        cos_x = math.cos(angle)
+        sin_x = (1 - cos_x*cos_x) ** 0.5
+        dx = forward_speed * cos_x - strafe_speed * sin_x
+        dy = forward_speed * sin_x + strafe_speed * cos_x
         my_position = Point2D(self.me.x + dx * n_ticks_forward, self.me.y + dy * n_ticks_forward)
         return my_position, angle
 
