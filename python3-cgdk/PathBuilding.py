@@ -6,7 +6,6 @@ from model.CircularUnit import CircularUnit
 import math
 import numpy as np
 
-
 class Point2D:
     def __init__(self, x, y):
         self.x = x
@@ -20,10 +19,21 @@ class Point2D:
 
 
 class VisibleMap:
-    def __init__(self, me: Wizard = None, world: World = None, game: Game = None):
+    def __init__(self, debug=None, me: Wizard = None, world: World = None, game: Game = None):
+        self.debug = debug
         self.world = world
         self.game = game
         self.me = me
+
+        try:
+            from debug_client import Color
+            self.green = Color(r=0.0, g=1.0, b=0.0)
+            self.red = Color(r=1.0, g=0.0, b=0.0)
+            self.grey = Color(r=0.7, g=0.7, b=0.7)
+            self.black = Color(r=0.0, g=0.0, b=0.0)
+        except ImportError:
+            pass
+
 
     def init_tick(self, me: Wizard, world: World, game: Game):
         self.world = world
@@ -58,6 +68,11 @@ class VisibleMap:
                 self.world.bonuses + \
                 self.world.projectiles + \
                 self.world.trees
+        # units = self.world.buildings + \
+        #         self.world.wizards + \
+        #         self.world.minions + \
+        #         self.world.bonuses + \
+        #         self.world.projectiles
         potential = self.get_score_to_goal(pos, target)
         for unit_nearby in units:
             if self.me.get_distance_to_unit(unit_nearby) < view_radius:
@@ -65,7 +80,6 @@ class VisibleMap:
         return potential
 
     def do_move(self, forward_speed, strafe_right, turn, n_ticks_forward):
-        my_position = Point2D(self.me.x, self.me.y)
         game = self.game
         max_speed = game.wizard_forward_speed if forward_speed > 0 else game.wizard_backward_speed
         max_strafe_speed = game.wizard_strafe_speed
@@ -73,15 +87,19 @@ class VisibleMap:
         angle = self.me.angle
         strafe_angle = angle + math.pi * 0.5
 
-        for _ in range(n_ticks_forward):
-            my_position.x += forward_speed * math.cos(angle) + strafe_speed * math.cos(strafe_angle)
-            my_position.y += forward_speed * math.sin(angle) + strafe_speed * math.sin(strafe_angle)
-            angle += turn
-
+        # my_position = Point2D(self.me.x, self.me.y)
+        # for _ in range(n_ticks_forward):
+        #     my_position.x += forward_speed * math.cos(angle) + strafe_speed * math.cos(strafe_angle)
+        #     my_position.y += forward_speed * math.sin(angle) + strafe_speed * math.sin(strafe_angle)
+        #     angle += turn
+        angle += turn * n_ticks_forward / 2
+        dx = forward_speed * math.cos(angle) + strafe_speed * math.cos(strafe_angle)
+        dy = forward_speed * math.sin(angle) + strafe_speed * math.sin(strafe_angle)
+        my_position = Point2D(self.me.x + dx * n_ticks_forward, self.me.y + dy * n_ticks_forward)
         return my_position, angle
 
     def get_optimal_move(self, target: Point2D):
-        n_ticks_forward = 2
+        n_ticks_forward = 5
 
         game = self.game
         optimal_forward = 0
@@ -104,9 +122,20 @@ class VisibleMap:
                     pos, _ = self.do_move(value_forward, value_strafe_right, value_turn, n_ticks_forward)
 
                     score = self.get_potential(pos, target)
+
+                    if self.debug:
+                        with self.debug.post() as dbg:
+                            dbg.circle(pos.x, pos.y, 12, self.green)
+                            dbg.text(pos.x, pos.y, score, self.green)
+
                     if score > max_score:
                         max_score = score
+                        optimal_pos = pos
                         optimal_forward, optimal_strafe_right, optimal_turn = value_forward, value_strafe_right, value_turn
+        if self.debug:
+            with self.debug.post() as dbg:
+                dbg.circle(optimal_pos.x, optimal_pos.y, 12, self.red)
+                dbg.text(self.me.x, self.me.y, max_score, self.red)
         return optimal_forward, optimal_strafe_right, optimal_turn
 
 

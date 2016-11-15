@@ -6,7 +6,6 @@ from model.World import World
 from model.LineType import LineType
 from model.Faction import Faction
 from PathBuilding import Point2D, VisibleMap
-from PathBuilding import VisibleMap
 
 try:
     from debug_client import Color
@@ -15,9 +14,6 @@ except ImportError:
 
 import math
 import random
-import numpy
-
-from tkinter import *
 
 canvas_width = 200
 canvas_height =200
@@ -33,16 +29,19 @@ class MoveType:
     TURN = 5
     GO_TO_POINT = 10000
 
+
 class MoveNow:
     def __init__(self, move_type=MoveType.STOP, duration=-1, point=None, angle=0):
         self.move_type = move_type
         self.duration = duration
         self.point = point
         self.angle = angle
+
     def __str__(self):
         return "member of Test"
 
 C_EmptyMoveNow = MoveNow()
+
 
 class MyStrategy:
     def __init__(self, me: Wizard = None, world: World = None, game: Game = None, move: Move = None):
@@ -57,7 +56,6 @@ class MyStrategy:
             self.red = Color(r=1.0, g=0.0, b=0.0)
             self.grey = Color(r=0.7, g=0.7, b=0.7)
             self.black = Color(r=0.0, g=0.0, b=0.0)
-			
         self.isInit = False
         self.waypoints_by_line = Dict[LineType, List[Point2D]]
         self.waypoints = List[Point2D]
@@ -69,7 +67,7 @@ class MyStrategy:
         self._last_nearest_target = None
         self._last_attack_tick_index = 0
 
-        self.map = VisibleMap()
+        self.map = VisibleMap()  # (self.debug)
 
         self.last_move = None
         self.last_move_duration = 0
@@ -198,12 +196,24 @@ class MyStrategy:
         #     #MoveNow(move_type=MoveType.GO_TO_POINT,point=training_point),
         #     MoveNow(move_type=MoveType.STOP),
         # ])
+
+        previous_waypoint = self.get_previous_waypoint()
+        next_waypoint = self.get_next_waypoint()
+        if self.debug:
+            with self.debug.post() as dbg:
+                dbg.circle(next_waypoint.x, next_waypoint.y, 50, self.green)
+                dbg.circle(previous_waypoint.x, previous_waypoint.y, 50, self.red)
+
+
         # // Если осталось мало жизненной энергии, отступаем к предыдущей ключевой точке на линии.
         if me.life < me.max_life * LOW_HP_FACTOR:
             previous_waypoint = self.get_previous_waypoint()
             self.go_to(previous_waypoint)
             if self._last_waypoint.x != previous_waypoint.x or self._last_waypoint.y != previous_waypoint.y:
                 self._last_waypoint = previous_waypoint
+                # if self.debug:
+                #     with self.debug.post() as dbg:
+                #         dbg.circle(previous_waypoint.x, previous_waypoint.y, 50, self.red)
                 self.log['go_to_previous_waypoint']()
             return
 
@@ -228,6 +238,9 @@ class MyStrategy:
                         if abs(self.world.tick_index - self._last_attack_tick_index) > self.game.magic_missile_cooldown_ticks:
                             self._last_attack_tick_index = self.world.tick_index
                             self.log['attack']()
+                    if self.debug:
+                        with self.debug.post() as dbg:
+                            dbg.fill_circle(nearest_target.x, nearest_target.y, 10, self.red)
                     move.action = ActionType.MAGIC_MISSILE
                     move.cast_angle = angle
                     move.min_cast_distance = distance - nearest_target.radius + game.magic_missile_radius
@@ -239,6 +252,9 @@ class MyStrategy:
         self.go_to(next_waypoint)
         if self._last_waypoint is None or self._last_waypoint.x != next_waypoint.x or self._last_waypoint.y != next_waypoint.y:
             self._last_waypoint = next_waypoint
+            # if self.debug:
+            #     with self.debug.post() as dbg:
+            #         dbg.circle(next_waypoint.x, next_waypoint.y, 50, self.green)
             self.log['go_to_next_waypoint']()
 
 
@@ -330,9 +346,7 @@ class MyStrategy:
                 with self.debug.pre() as dbg:
                     for line_ in self.waypoints_by_line:
                         for point in self.waypoints_by_line[line_]:
-                            dbg.circle(point.x, point.y, 50, self.green)
-
-                with self.debug.post() as dbg:
+                            dbg.circle(point.x, point.y, 40, self.black)
                     for i in range(40):
                         dbg.line(0, i*step, map_size, i*step, self.grey)
                         dbg.text(0 + 20, i*step, str(i*step), self.black)
