@@ -67,7 +67,7 @@ class MyStrategy:
         self._last_nearest_target = None
         self._last_attack_tick_index = 0
 
-        self.map = VisibleMap()  # (self.debug)
+        self.map = VisibleMap(self.debug)
 
         self.last_move = None
         self.last_move_duration = 0
@@ -199,10 +199,10 @@ class MyStrategy:
 
         previous_waypoint = self.get_previous_waypoint()
         next_waypoint = self.get_next_waypoint()
-        if self.debug:
-            with self.debug.post() as dbg:
-                dbg.circle(next_waypoint.x, next_waypoint.y, 50, self.green)
-                dbg.circle(previous_waypoint.x, previous_waypoint.y, 50, self.red)
+        # if self.debug:
+        #     with self.debug.post() as dbg:
+        #         dbg.circle(next_waypoint.x, next_waypoint.y, 50, self.green)
+        #         dbg.circle(previous_waypoint.x, previous_waypoint.y, 50, self.red)
 
 
         # // Если осталось мало жизненной энергии, отступаем к предыдущей ключевой точке на линии.
@@ -230,9 +230,9 @@ class MyStrategy:
                 # // ... то поворачиваемся к цели.
                 move.turn = angle
 
-                if self.debug:
-                    with self.debug.post() as dbg:
-                        dbg.fill_circle(nearest_target.x, nearest_target.y, 15, self.red)
+                # if self.debug:
+                #     with self.debug.post() as dbg:
+                #         dbg.fill_circle(nearest_target.x, nearest_target.y, 15, self.red)
                 # // Если цель перед нами, ...
                 if abs(angle) < game.staff_sector / 2.0:
                     # // ... то атакуем.
@@ -343,16 +343,16 @@ class MyStrategy:
 
             if self.debug:
                 step = 100
-                with self.debug.pre() as dbg:
-                    for line_ in self.waypoints_by_line:
-                        for point in self.waypoints_by_line[line_]:
-                            dbg.circle(point.x, point.y, 40, self.black)
-                    for i in range(40):
-                        dbg.line(0, i*step, map_size, i*step, self.grey)
-                        dbg.text(0 + 20, i*step, str(i*step), self.black)
-                    for i in range(40):
-                        dbg.line(i*step, 0, i*step, map_size, self.grey)
-                        dbg.text(i*step, map_size - 20, str(i*step), self.black)
+                # with self.debug.pre() as dbg:
+                #     for line_ in self.waypoints_by_line:
+                #         for point in self.waypoints_by_line[line_]:
+                #             dbg.circle(point.x, point.y, 40, self.black)
+                #     for i in range(40):
+                #         dbg.line(0, i*step, map_size, i*step, self.grey)
+                #         dbg.text(0 + 20, i*step, str(i*step), self.black)
+                #     for i in range(40):
+                #         dbg.line(i*step, 0, i*step, map_size, self.grey)
+                #         dbg.text(i*step, map_size - 20, str(i*step), self.black)
 
             # // Наша стратегия исходит из предположения, что заданные нами ключевые точки упорядочены по убыванию
             # // дальности до последней ключевой точки. Сейчас проверка этого факта отключена, однако вы можете
