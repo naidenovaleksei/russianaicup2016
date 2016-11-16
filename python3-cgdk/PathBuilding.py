@@ -7,6 +7,7 @@ import math
 import numpy as np
 import interpolator.interpolator as interp
 
+
 class Point2D:
     def __init__(self, x, y):
         self.x = x
@@ -36,7 +37,6 @@ class VisibleMap:
         except ImportError:
             pass
 
-
     def init_tick(self, me: Wizard, world: World, game: Game):
         self.world = world
         self.game = game
@@ -60,7 +60,6 @@ class VisibleMap:
             elif 0 < dist:
                 return neutral_coef / dist**2 if dist > 0 else float("inf")
             else:
-                #NOPE
                 return 0
 
     def calc_potential(self, pos: Point2D, target: Point2D):
@@ -72,23 +71,19 @@ class VisibleMap:
                 self.world.projectiles + \
                 self.world.trees
         potential = self.get_score_to_goal(pos, target)
-        # for unit_nearby in units:
-        #     if self.me.get_distance_to_unit(unit_nearby) < view_radius:
-        #         potential += self.get_score_to_neutral(pos, unit_nearby)
+        for unit_nearby in units:
+            if self.me.get_distance_to_unit(unit_nearby) < view_radius:
+                potential += self.get_score_to_neutral(pos, unit_nearby)
         return potential
 
     def create_potential_map(self, target: Point2D):
         n_ticks_forward = 2
         r = self.game.wizard_forward_speed * n_ticks_forward
-        half_n = 4
+        half_n = 3
         k = r / half_n
         range_x = range(-half_n, half_n + 1)
-        # range_x = [0]
         range_y = range(-half_n + 1, half_n)
-        # self.coord = [[(self.me.x + k*x, self.me.y + k*y) for x in range_] for y in range_]
-        # self.coords = ([k * x for x in range_], [k * y for y in range_])
         self.coords = ([self.me.x + k*x for x in range_x], [self.me.y + k*y for y in range_y])
-        # self.potential_map = np.array([[self.calc_potential(Point2D(self.me.x + k*x, self.me.y + k*y), target) for x in range_x] for y in range_y])
         self.potential_map = np.array([[self.calc_potential(Point2D(self.me.x + k*x, self.me.y + k*y), target) for y in range_y] for x in range_x])
 
         data = (self.potential_map,)
@@ -105,13 +100,6 @@ class VisibleMap:
                         score = (self.get_potential_in_pos(Point2D(x, y)) - min_)/ (max_ - min_) if (max_ - min_) > 0 else 0
                         dbg.fill_circle(x, y, 2, Color(r=score, g=1-score, b=0.0))
 
-
-        # range_x = range(-half_n + 1, half_n)
-        # range_x = [0]
-        # range_y = range(-half_n + 2, half_n - 1)
-        # check = np.array([[self.get_potential_in_pos(Point2D(self.me.x + k*x, self.me.y + k*y)) for x in range_x] for y in range_y])
-        # assert check.shape == self.potential_map.shape
-
     def get_potential_in_pos(self, pos: Point2D):
         (error_flag, output) = self.potential_interp([pos.x, pos.y])
         return output[0] if output else 0
@@ -123,22 +111,13 @@ class VisibleMap:
         strafe_speed = strafe_right * max_strafe_speed * (1 - (forward_speed/max_speed)**2) ** 0.5
         angle = self.me.angle
 
-        # strafe_angle = angle + math.pi / 2
         my_position = Point2D(self.me.x, self.me.y)
         for _ in range(n_ticks_forward):
             angle += turn
-            my_position.x += forward_speed * math.cos(angle) + strafe_speed * math.cos(angle + math.pi / 2)
-            my_position.y += forward_speed * math.sin(angle) + strafe_speed * math.sin(angle + math.pi / 2)
-        # for _ in range(n_ticks_forward):
-        #     my_position.x += forward_speed * math.cos(angle) + strafe_speed * math.cos(strafe_angle)
-        #     my_position.y += forward_speed * math.sin(angle) + strafe_speed * math.sin(strafe_angle)
-        #     angle += turn
-        # angle += turn #* n_ticks_forward / 2
-        # cos_x = math.cos(angle)
-        # sin_x = (1 - cos_x*cos_x) ** 0.5
-        # dx = forward_speed * cos_x - strafe_speed * sin_x
-        # dy = forward_speed * sin_x + strafe_speed * cos_x
-        # my_position = Point2D(self.me.x + dx * n_ticks_forward, self.me.y + dy * n_ticks_forward)
+            cos_x = math.cos(angle)
+            sin_x = math.sin(angle)
+            my_position.x += forward_speed * cos_x - strafe_speed * sin_x
+            my_position.y += forward_speed * sin_x + strafe_speed * cos_x
         return my_position, angle
 
     def get_optimal_move(self, target: Point2D):
@@ -151,14 +130,11 @@ class VisibleMap:
         max_score = 0
 
         # [-wizard_backward_speed; wizard_forward_speed]
-        # value_forward_list = np.arange(-game.wizard_backward_speed, game.wizard_forward_speed + 0.1, 0.5)
         value_forward_list = [-self.game.wizard_backward_speed, 0, self.game.wizard_forward_speed]
         # [-wizard_strafe_speed; wizard_strafe_speed)
         value_strafe_right_list = [-1, 0, 1]
         # [-wizard_max_turn_angle; wizard_max_turn_angle]
-        # value_turn_list = np.arange(-game.wizard_max_turn_angle, game.wizard_max_turn_angle + 0.1, 0.1)
-        value_turn_list = np.random.uniform(-game.wizard_max_turn_angle, game.wizard_max_turn_angle, 50)
-        # value_turn_list = np.random.normal(0, game.wizard_max_turn_angle / 3, 50)
+        value_turn_list = np.random.uniform(-game.wizard_max_turn_angle, game.wizard_max_turn_angle, 20)
 
         self.create_potential_map(target)
         for value_forward in value_forward_list:
@@ -171,19 +147,11 @@ class VisibleMap:
                                                   0, 0, n_ticks_forward)
                     score_forward = self.get_potential_in_pos(pos_forward)
 
-                    # if self.debug:
-                    #     with self.debug.post() as dbg:
-                    #         dbg.circle(pos.x, pos.y, 12, self.green)
-                    #         dbg.text(pos.x, pos.y, score, self.green)
-
                     if score > max_score:
                         optimal_pos = pos
                         optimal_forward, optimal_strafe_right, optimal_turn = value_forward, value_strafe_right, value_turn
                         max_score = score
-        # if self.debug:
-        #     with self.debug.post() as dbg:
-        #         dbg.circle(optimal_pos.x, optimal_pos.y, 12, self.red)
-        #         dbg.text(self.me.x, self.me.y, max_score, self.red)
+
         game = self.game
         max_speed = game.wizard_forward_speed if optimal_forward > 0 else game.wizard_backward_speed
         max_strafe_speed = game.wizard_strafe_speed

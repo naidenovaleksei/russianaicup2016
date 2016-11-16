@@ -182,28 +182,13 @@ class MyStrategy:
         self.initialize_tick(me, world, game, move)
         self.map.init_tick(me, world, game)
 
-        # training_points = [
-        #     Point2D(200, 3500),
-        #     Point2D(200, 3600),
-        #     Point2D(100, 3500)
-        # ]
-        # self.do_next_move([
-        #     MoveNow(move_type=MoveType.GO_TO_POINT,point=training_points[0]),
-        #     MoveNow(move_type=MoveType.GO_TO_POINT,point=training_points[1]),
-        #     MoveNow(move_type=MoveType.GO_TO_POINT,point=training_points[2]),
-        #     # MoveNow(move_type=MoveType.TURN,angle=-math.pi*0.5),
-        #     # MoveNow(move_type=MoveType.FORWARD,duration=50),
-        #     # MoveNow(move_type=MoveType.BACKWARD,duration=50),
-        #     #MoveNow(move_type=MoveType.GO_TO_POINT,point=training_point),
-        #     MoveNow(move_type=MoveType.STOP),
-        # ])
 
         previous_waypoint = self.get_previous_waypoint()
         next_waypoint = self.get_next_waypoint()
-        # if self.debug:
-        #     with self.debug.post() as dbg:
-        #         dbg.circle(next_waypoint.x, next_waypoint.y, 50, self.green)
-        #         dbg.circle(previous_waypoint.x, previous_waypoint.y, 50, self.red)
+        if self.debug:
+            with self.debug.pre() as dbg:
+                dbg.circle(next_waypoint.x, next_waypoint.y, 50, self.green)
+                dbg.circle(previous_waypoint.x, previous_waypoint.y, 50, self.red)
 
 
         # // Если осталось мало жизненной энергии, отступаем к предыдущей ключевой точке на линии.
@@ -253,23 +238,7 @@ class MyStrategy:
         self.go_to(next_waypoint)
         if self._last_waypoint is None or self._last_waypoint.x != next_waypoint.x or self._last_waypoint.y != next_waypoint.y:
             self._last_waypoint = next_waypoint
-            # if self.debug:
-            #     with self.debug.post() as dbg:
-            #         dbg.circle(next_waypoint.x, next_waypoint.y, 50, self.green)
             self.log['go_to_next_waypoint']()
-
-
-
-    def get_normal(self, point1, point2, point3):
-        a = ((point1.x - point2.x)**2 + (point1.y - point2.y)**2) ** 0.5
-        b = ((point3.x - point2.x)**2 + (point3.y - point2.y)**2) ** 0.5
-        c = ((point1.x - point3.x)**2 + (point1.y - point3.y)**2) ** 0.5
-        p = (a + b + c) / 3
-        if a == 0 or b == 0 or c == 0:
-            return 0
-        h = 2 * ((p * (p-a) * (p-b) * (p-c)) ** 0.5) / b
-        D = (point3.x - point1.x) * (point2.y - point1.y) - (point3.y - point1.y) * (point2.x - point1.x)
-        return h * (1 if D > 0 else -1)
 
     # /**
     #  * Инциализируем стратегию.
@@ -342,18 +311,18 @@ class MyStrategy:
 
             self.waypoints = self.waypoints_by_line[line]
 
-            if self.debug:
-                step = 100
-                # with self.debug.pre() as dbg:
-                #     for line_ in self.waypoints_by_line:
-                #         for point in self.waypoints_by_line[line_]:
-                #             dbg.circle(point.x, point.y, 40, self.black)
-                #     for i in range(40):
-                #         dbg.line(0, i*step, map_size, i*step, self.grey)
-                #         dbg.text(0 + 20, i*step, str(i*step), self.black)
-                #     for i in range(40):
-                #         dbg.line(i*step, 0, i*step, map_size, self.grey)
-                #         dbg.text(i*step, map_size - 20, str(i*step), self.black)
+            # if self.debug:
+            #     step = 100
+            #     with self.debug.pre() as dbg:
+            #         for line_ in self.waypoints_by_line:
+            #             for point in self.waypoints_by_line[line_]:
+            #                 dbg.circle(point.x, point.y, 40, self.black)
+            #         for i in range(40):
+            #             dbg.line(0, i*step, map_size, i*step, self.grey)
+            #             dbg.text(0 + 20, i*step, str(i*step), self.black)
+            #         for i in range(40):
+            #             dbg.line(i*step, 0, i*step, map_size, self.grey)
+            #             dbg.text(i*step, map_size - 20, str(i*step), self.black)
 
             # // Наша стратегия исходит из предположения, что заданные нами ключевые точки упорядочены по убыванию
             # // дальности до последней ключевой точки. Сейчас проверка этого факта отключена, однако вы можете
