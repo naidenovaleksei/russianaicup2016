@@ -46,6 +46,7 @@ C_EmptyMoveNow = MoveNow()
 class MyStrategy:
     def __init__(self, me: Wizard = None, world: World = None, game: Game = None, move: Move = None):
         from typing import Dict, List
+        # self.debug = None
         try:
             from debug_client import DebugClient
         except ImportError: # no debug module, maybe running on the russianaicup.ru server
