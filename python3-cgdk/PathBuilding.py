@@ -169,9 +169,10 @@ class VisibleMap:
         # [-wizard_strafe_speed; wizard_strafe_speed)
         value_strafe_right_list = [-1, 0, 1]
         # [-wizard_max_turn_angle; wizard_max_turn_angle]
-        value_turn_list = np.random.uniform(-game.wizard_max_turn_angle, game.wizard_max_turn_angle, 10) if angle is None else [angle]
+        # value_turn_list = np.random.uniform(-game.wizard_max_turn_angle, game.wizard_max_turn_angle, 10) if angle is None else [angle]
+        value_turn_list = [(i - 4) / 4 * game.wizard_max_turn_angle for i in range(10)] if angle is None else [angle]
 
-        if False:
+        if True:
             for value_forward in value_forward_list:
                 for value_strafe_right in value_strafe_right_list:
                     for value_turn in value_turn_list:

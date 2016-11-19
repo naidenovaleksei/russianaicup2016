@@ -190,7 +190,7 @@ class MyStrategy:
         self.initialize_tick(me, world, game, move)
         self.map.init_tick(me, world, game)
 
-        score_threshold = -0.3
+        score_threshold = -0.1
         wizard_score = me.life / (me.max_life * 0.5) - 1
         common_score = 0
 
@@ -198,7 +198,8 @@ class MyStrategy:
             self.battle_front.init(world, me)
             self.front_score = self.battle_front.get_front_score(me)
             # common_score = self.front_score + wizard_score
-            common_score = min(self.front_score, wizard_score)
+            k = 0.6
+            common_score = self.front_score * (1 - k) + wizard_score * k
             print("{}:front: {:.2f}; wizard:{:.2f}; common: {:.2f}".format(self.world.tick_index, self.front_score, wizard_score, common_score))
         else:
             common_score = wizard_score
@@ -266,8 +267,9 @@ class MyStrategy:
 
                 return
             else:
-                new_front = Point2D((nearest_target.x + me.x) / distance * (distance - me.cast_range), (nearest_target.y + me.y) / distance * (distance - me.cast_range))
-                self.go_to(new_front)
+                new_x = me.x + (nearest_target.x - me.x) / distance * (distance - me.cast_range)
+                new_y = me.y + (nearest_target.y - me.y) / distance * (distance - me.cast_range)
+                self.go_to(Point2D(new_x, new_y))
                 return
 
         # // Если нет других действий, просто продвигаемся вперёд.
@@ -455,7 +457,7 @@ class MyStrategy:
             return None
 
         nearest_target = None
-        nearest_target_distance = float("inf")
+        nearest_target_distance = 1.5 * self.me.vision_range # float("inf")
 
         for target in targets:
             if (target.faction == Faction.NEUTRAL) or (target.faction == self.me.faction):
