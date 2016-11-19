@@ -2,10 +2,18 @@ from model.Game import Game
 from model.World import World
 from model.Wizard import Wizard
 from model.CircularUnit import CircularUnit
+from model.LivingUnit import LivingUnit
+from model.Minion import Minion
+from model.MinionType import MinionType
+from model.ActionType import ActionType
+from model.Building import Building
+from model.Faction import Faction
 
 import math
 import numpy as np
 import interpolator.interpolator as interp
+
+debug = True
 
 
 class Point2D:
@@ -62,6 +70,33 @@ class VisibleMap:
             else:
                 return 0
 
+    def get_score_to_enemy(self, point: Point2D, unit: LivingUnit):
+        enemy_coef = 1
+        if type(unit) is Wizard:
+            danger_radius = (unit).cast_range
+            enemy_coef = self.game.magic_missile_direct_damage
+        elif type(unit) is Building:
+            danger_radius = (unit).attack_range
+            enemy_coef = self.game.guardian_tower_damage
+        elif type(unit) is Minion:
+            danger_radius = self.game.orc_woodcutter_attack_range if (unit).type == MinionType.ORC_WOODCUTTER else self.game.fetish_blowdart_attack_range
+            enemy_coef = self.game.orc_woodcutter_damage if (unit).type == MinionType.ORC_WOODCUTTER else self.game.dart_direct_damage
+
+        enemy_coef *= 100 if self.me.remaining_cooldown_ticks_by_action[ActionType.MAGIC_MISSILE] > 0 else 1
+
+        dist = point.get_distance_to_unit(unit) - self.me.radius #- unit.radius
+        if dist <= 0:
+            return float("-inf")
+        elif 0 < dist <= danger_radius:
+            return dist * (enemy_coef / danger_radius) - enemy_coef# - 0.01 * enemy_coef
+        else:
+            return 0
+        # return -enemy_coef / dist if dist > 0 else float("-inf")
+
+    def is_enemy(self, unit: LivingUnit):
+        return unit.faction != self.me.faction and unit.faction != Faction.NEUTRAL and (type(unit) is Wizard or type(unit) is Building or type(unit) is Minion)
+
+
     def calc_potential(self, pos: Point2D, target: Point2D):
         view_radius = 200
         units = self.world.buildings + \
@@ -73,7 +108,7 @@ class VisibleMap:
         potential = self.get_score_to_goal(pos, target)
         for unit_nearby in units:
             if self.me.get_distance_to_unit(unit_nearby) < view_radius:
-                potential += self.get_score_to_neutral(pos, unit_nearby)
+                potential += self.get_score_to_neutral(pos, unit_nearby) if not self.is_enemy(unit_nearby) else self.get_score_to_enemy(pos, unit_nearby)
         return potential
 
     def create_potential_map(self, target: Point2D):
@@ -89,7 +124,7 @@ class VisibleMap:
         data = (self.potential_map,)
         self.potential_interp = interp.multilinear_interpolator(self.coords, data)
 
-        if self.debug:
+        if self.debug and debug:
             max_ = np.amax(self.potential_map)
             min_ = np.amin(self.potential_map)
             with self.debug.post() as dbg:
@@ -120,7 +155,7 @@ class VisibleMap:
             my_position.y += forward_speed * sin_x + strafe_speed * cos_x
         return my_position, angle
 
-    def get_optimal_move(self, target: Point2D):
+    def get_optimal_move(self, target: Point2D, angle=None):
         n_ticks_forward = 1
 
         game = self.game
@@ -134,23 +169,33 @@ class VisibleMap:
         # [-wizard_strafe_speed; wizard_strafe_speed)
         value_strafe_right_list = [-1, 0, 1]
         # [-wizard_max_turn_angle; wizard_max_turn_angle]
-        value_turn_list = np.random.uniform(-game.wizard_max_turn_angle, game.wizard_max_turn_angle, 20)
+        value_turn_list = np.random.uniform(-game.wizard_max_turn_angle, game.wizard_max_turn_angle, 10) if angle is None else [angle]
 
-        self.create_potential_map(target)
-        for value_forward in value_forward_list:
-            for value_strafe_right in value_strafe_right_list:
-                for value_turn in value_turn_list:
-                    pos, _ = self.do_move(value_forward, value_strafe_right, value_turn, n_ticks_forward)
-                    score = self.get_potential_in_pos(pos)
+        if False:
+            for value_forward in value_forward_list:
+                for value_strafe_right in value_strafe_right_list:
+                    for value_turn in value_turn_list:
+                        pos, _ = self.do_move(value_forward, value_strafe_right, value_turn, n_ticks_forward)
+                        score = self.calc_potential(pos, target)
+                        if score > max_score:
+                            optimal_forward, optimal_strafe_right, optimal_turn = value_forward, value_strafe_right, value_turn
+                            max_score = score
+        else:
+            self.create_potential_map(target)
+            for value_forward in value_forward_list:
+                for value_strafe_right in value_strafe_right_list:
+                    for value_turn in value_turn_list:
+                        pos, _ = self.do_move(value_forward, value_strafe_right, value_turn, n_ticks_forward)
+                        score = self.get_potential_in_pos(pos)
 
-                    pos_forward, _ = self.do_move(self.game.wizard_forward_speed,
-                                                  0, 0, n_ticks_forward)
-                    score_forward = self.get_potential_in_pos(pos_forward)
+                        # pos_forward, _ = self.do_move(self.game.wizard_forward_speed,
+                        #                               0, 0, n_ticks_forward)
+                        # score_forward = self.get_potential_in_pos(pos_forward)
 
-                    if score > max_score:
-                        optimal_pos = pos
-                        optimal_forward, optimal_strafe_right, optimal_turn = value_forward, value_strafe_right, value_turn
-                        max_score = score
+                        if score > max_score:
+                            optimal_pos = pos
+                            optimal_forward, optimal_strafe_right, optimal_turn = value_forward, value_strafe_right, value_turn
+                            max_score = score
 
         game = self.game
         max_speed = game.wizard_forward_speed if optimal_forward > 0 else game.wizard_backward_speed

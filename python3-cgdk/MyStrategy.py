@@ -6,6 +6,7 @@ from model.World import World
 from model.LineType import LineType
 from model.Faction import Faction
 from PathBuilding import Point2D, VisibleMap
+from Planning2 import BattleFront
 
 try:
     from debug_client import Color
@@ -46,7 +47,7 @@ C_EmptyMoveNow = MoveNow()
 class MyStrategy:
     def __init__(self, me: Wizard = None, world: World = None, game: Game = None, move: Move = None):
         from typing import Dict, List
-        # self.debug = None
+        self.debug = None
         try:
             from debug_client import DebugClient
         except ImportError: # no debug module, maybe running on the russianaicup.ru server
@@ -57,6 +58,7 @@ class MyStrategy:
             self.red = Color(r=1.0, g=0.0, b=0.0)
             self.grey = Color(r=0.7, g=0.7, b=0.7)
             self.black = Color(r=0.0, g=0.0, b=0.0)
+            self.yellow = Color(r=1.0, g=1.0, b=0.0)
         self.isInit = False
         self.waypoints_by_line = Dict[LineType, List[Point2D]]
         self.waypoints = List[Point2D]
@@ -75,19 +77,25 @@ class MyStrategy:
         self.last_tick = 0
         self.move_index = 0
 
+        self.battle_front = None
+        self.front_score = 0
+
         self.log = {
             'go_to_previous_waypoint': lambda: print(self.world.tick_index,
                                        'previous',
+                                       self.front_score,
                                        self._last_waypoint.x,
                                        self._last_waypoint.y,
                                        self.me.life, sep = '\t'),
             'go_to_next_waypoint': lambda: print(self.world.tick_index,
                                    'next    ',
+                                   self.front_score,
                                    self._last_waypoint.x,
                                    self._last_waypoint.y,
 								   self.me.life, sep = '\t'),
             'attack': lambda: print(self.world.tick_index,
                                     'attack  ',
+                                    self.front_score,
                                     self._last_nearest_target.x,
                                     self._last_nearest_target.y,
                                     self._last_nearest_target.id,
@@ -178,28 +186,52 @@ class MyStrategy:
             # to sync replays played in local runner and in repeater
             self.debug.syncronize(world)
 
-        self.initialize_strategy(me, game)
+        self.initialize_strategy(me, world, game)
         self.initialize_tick(me, world, game, move)
         self.map.init_tick(me, world, game)
+
+        score_threshold = -0.3
+        wizard_score = me.life / (me.max_life * 0.5) - 1
+        common_score = 0
+
+        if self.battle_front:
+            self.battle_front.init(world, me)
+            self.front_score = self.battle_front.get_front_score(me)
+            # common_score = self.front_score + wizard_score
+            common_score = min(self.front_score, wizard_score)
+            print("{}:front: {:.2f}; wizard:{:.2f}; common: {:.2f}".format(self.world.tick_index, self.front_score, wizard_score, common_score))
+        else:
+            common_score = wizard_score
+            self.battle_front = BattleFront(world)
 
 
         previous_waypoint = self.get_previous_waypoint()
         next_waypoint = self.get_next_waypoint()
-        if self.debug:
-            with self.debug.pre() as dbg:
-                dbg.circle(next_waypoint.x, next_waypoint.y, 50, self.green)
-                dbg.circle(previous_waypoint.x, previous_waypoint.y, 50, self.red)
+        # if self.debug:
+        #     with self.debug.pre() as dbg:
+        #         dbg.circle(next_waypoint.x, next_waypoint.y, 50, self.green)
+        #         dbg.circle(previous_waypoint.x, previous_waypoint.y, 50, self.red)
+        #         if self.battle_front:
+        #             colors = {
+        #                 LineType.TOP: self.yellow,
+        #                 LineType.MIDDLE: self.red,
+        #                 LineType.BOTTOM: self.green
+        #             }
+        #             for unit in world.wizards + world.minions + world.buildings:
+        #                 lines = self.battle_front.define_line_types(unit)
+        #                 if len(lines) > 0:
+        #                     dbg.circle(unit.x, unit.y, 50, colors[lines[0]])
+        #                 else:
+        #                     print("error no line type")
 
 
         # // Если осталось мало жизненной энергии, отступаем к предыдущей ключевой точке на линии.
-        if me.life < me.max_life * LOW_HP_FACTOR:
+        # if me.life < me.max_life * LOW_HP_FACTOR:
+        if common_score < score_threshold:
             previous_waypoint = self.get_previous_waypoint()
             self.go_to(previous_waypoint)
             if self._last_waypoint.x != previous_waypoint.x or self._last_waypoint.y != previous_waypoint.y:
                 self._last_waypoint = previous_waypoint
-                # if self.debug:
-                #     with self.debug.post() as dbg:
-                #         dbg.circle(previous_waypoint.x, previous_waypoint.y, 50, self.red)
                 self.log['go_to_previous_waypoint']()
             return
 
@@ -215,10 +247,9 @@ class MyStrategy:
 
                 # // ... то поворачиваемся к цели.
                 move.turn = angle
+                # self.go_to(nearest_target, move.turn)
+                # move.turn = angle
 
-                # if self.debug:
-                #     with self.debug.post() as dbg:
-                #         dbg.fill_circle(nearest_target.x, nearest_target.y, 15, self.red)
                 # // Если цель перед нами, ...
                 if abs(angle) < game.staff_sector / 2.0:
                     # // ... то атакуем.
@@ -230,7 +261,13 @@ class MyStrategy:
                     move.action = ActionType.MAGIC_MISSILE
                     move.cast_angle = angle
                     move.min_cast_distance = distance - nearest_target.radius + game.magic_missile_radius
+                    # self.go_to(nearest_target, move.turn)
+                    # move.turn = angle
 
+                return
+            else:
+                new_front = Point2D((nearest_target.x + me.x) / distance * (distance - me.cast_range), (nearest_target.y + me.y) / distance * (distance - me.cast_range))
+                self.go_to(new_front)
                 return
 
         # // Если нет других действий, просто продвигаемся вперёд.
@@ -246,7 +283,7 @@ class MyStrategy:
     #  * Для этих целей обычно можно использовать конструктор, однако в данном случае мы хотим инициализировать генератор
     #  * случайных чисел значением, полученным от симулятора игры.
     #  */
-    def initialize_strategy(self, me: Wizard, game: Game):
+    def initialize_strategy(self, me: Wizard, world: World, game: Game):
         if ~self.isInit:
             self.isInit = True
             random.seed = game.random_seed
@@ -394,7 +431,7 @@ class MyStrategy:
     # /**
     #  * Простейший способ перемещения волшебника.
     #  */
-    def go_to(self, point: Point2D):
+    def go_to(self, point: Point2D, angle=None):
         # angle = self.me.get_angle_to(point.x, point.y)
         #
         # self._move.turn = angle
@@ -403,9 +440,9 @@ class MyStrategy:
         #     const_speed_koef = 1200
         #     self._move.speed = self.game.wizard_forward_speed * (1 if self.world.tick_index > 1200 else 0.5 )
 
-        self._move.speed, self._move.strafe_speed, self._move.turn = self.map.get_optimal_move(point)
-        speed_str = "{:.0f} {:.0f} {:.3f}".format(self.me.speed_x, self.me.speed_y, math.hypot(self.me.speed_x, self.me.speed_y))
-        print(self.world.tick_index, "move ", speed_str)
+        self._move.speed, self._move.strafe_speed, self._move.turn = self.map.get_optimal_move(point, angle)
+        # speed_str = "{:.0f} {:.0f} {:.3f}".format(self.me.speed_x, self.me.speed_y, math.hypot(self.me.speed_x, self.me.speed_y))
+        # print(self.world.tick_index, "move ", self.front_score, speed_str)
 
 
     # /**
