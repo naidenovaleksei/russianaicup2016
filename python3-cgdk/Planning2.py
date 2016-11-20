@@ -2,29 +2,17 @@ from model.Game import Game
 from model.World import World
 from model.Wizard import Wizard
 from model.LivingUnit import LivingUnit
-from model.CircularUnit import CircularUnit
-from PathBuilding import Point2D
-from model.LineType import LineType
+from model.LaneType import LaneType as LineType
 from model.Faction import Faction
 
 from typing import List
 
-import math
-import numpy as np
-
 
 class BattleFront:
     canal_width = 800
-
     base_disp = 400
 
     def __init__(self, world: World):
-        # equals.
-        self.path_length = {
-            LineType.TOP: world.height + world.width - 2 * self.base_disp,
-            LineType.MIDDLE: (world.height + world.width - 2 * self.base_disp), # / 1.414,
-            LineType.BOTTOM: world.height + world.width - 2 * self.base_disp
-        }
         self.left = self.top = 0
         self.bottom = world.height
         self.right = world.width
@@ -36,11 +24,11 @@ class BattleFront:
         self.world = world
 
     def calc_front_destination(self, line_type: LineType, me: Wizard):
-        path_length = me.vision_range # self.path_length[line_type]
+        path_length = me.vision_range
         score = 0
         me_pos = me.x + (self.bottom - me.y)
-        friend_sum_pos = 0 # me.x + (self.bottom - me.y)
-        friend_sum_life = 0 # me.life
+        friend_sum_pos = 0
+        friend_sum_life = 0
         enemy_sum_life = enemy_sum_pos = 0
         for unit in self.line_fronts[line_type]:
             position = unit.x + (self.bottom - unit.y) - me_pos
@@ -55,12 +43,12 @@ class BattleFront:
         if friend_sum_life > 0:
             friend_sum_pos /= friend_sum_life
         else:
-            friend_sum_pos = - path_length #self.base_disp
+            friend_sum_pos = - path_length
 
         if enemy_sum_life > 0:
             enemy_sum_pos /= enemy_sum_life
         else:
-            enemy_sum_pos = path_length # path_length
+            enemy_sum_pos = path_length
 
         if enemy_sum_life + friend_sum_life > 0:
             common_pos = (friend_sum_pos * enemy_sum_life + enemy_sum_pos * friend_sum_life) / (enemy_sum_life + friend_sum_life)
@@ -80,7 +68,7 @@ class BattleFront:
     def define_line_types(self, unit: LivingUnit):
         line_types = []
         x = unit.x
-        y = unit.y #self.bottom - unit.y
+        y = unit.y
 
         if min(abs(x - self.left), abs(y - self.top)) < self.canal_width:
             line_types.append(LineType.TOP)
@@ -109,11 +97,11 @@ class BattleFront:
     def init(self, world: World, me: Wizard):
         self.world = world
         self.clear()
-        range = 1.5 * me.vision_range
+        range_ = 1.5 * me.vision_range
 
         for unit in world.minions + world.buildings:
-            if unit.get_distance_to_unit(me) <= range:
+            if unit.get_distance_to_unit(me) <= range_:
                 self.add_unit(unit)
         for wizard in world.wizards:
-            if not wizard.me and wizard.get_distance_to_unit(me) <= range:
+            if not wizard.me and wizard.get_distance_to_unit(me) <= range_:
                 self.add_unit(wizard)

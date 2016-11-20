@@ -13,9 +13,6 @@ import math
 import numpy as np
 import interpolator.interpolator as interp
 
-debug = True
-
-
 class Point2D:
     def __init__(self, x, y):
         self.x = x
@@ -30,20 +27,10 @@ class Point2D:
 
 class VisibleMap:
     def __init__(self, debug=None, me: Wizard = None, world: World = None, game: Game = None):
-        self.debug = debug
         self.world = world
         self.game = game
         self.me = me
         self.potential_interp = None
-
-        try:
-            from debug_client import Color
-            self.green = Color(r=0.0, g=1.0, b=0.0)
-            self.red = Color(r=1.0, g=0.0, b=0.0)
-            self.grey = Color(r=0.7, g=0.7, b=0.7)
-            self.black = Color(r=0.0, g=0.0, b=0.0)
-        except ImportError:
-            pass
 
     def init_tick(self, me: Wizard, world: World, game: Game):
         self.world = world
@@ -55,7 +42,6 @@ class VisibleMap:
         dist = pos.get_distance_to_unit(goal)
         return 1 / dist if dist > 0 else float("inf")
 
-    # TODO: skip potential if an object do not lay on your path
     def get_score_to_neutral(self, point: Point2D, unit: CircularUnit):
         neutral_coef = - 0.01
 
@@ -84,18 +70,16 @@ class VisibleMap:
 
         enemy_coef *= 100 if self.me.remaining_cooldown_ticks_by_action[ActionType.MAGIC_MISSILE] > 0 else 1
 
-        dist = point.get_distance_to_unit(unit) - self.me.radius #- unit.radius
+        dist = point.get_distance_to_unit(unit) - self.me.radius
         if dist <= 0:
             return float("-inf")
         elif 0 < dist <= danger_radius:
-            return dist * (enemy_coef / danger_radius) - enemy_coef# - 0.01 * enemy_coef
+            return dist * (enemy_coef / danger_radius) - enemy_coef
         else:
             return 0
-        # return -enemy_coef / dist if dist > 0 else float("-inf")
 
     def is_enemy(self, unit: LivingUnit):
         return unit.faction != self.me.faction and unit.faction != Faction.NEUTRAL and (type(unit) is Wizard or type(unit) is Building or type(unit) is Minion)
-
 
     def calc_potential(self, pos: Point2D, target: Point2D):
         view_radius = 200
@@ -123,17 +107,6 @@ class VisibleMap:
 
         data = (self.potential_map,)
         self.potential_interp = interp.multilinear_interpolator(self.coords, data)
-
-        if self.debug and debug:
-            max_ = np.amax(self.potential_map)
-            min_ = np.amin(self.potential_map)
-            with self.debug.post() as dbg:
-                xs, ys = self.coords
-                from debug_client import Color
-                for x in xs:
-                    for y in ys:
-                        score = (self.get_potential_in_pos(Point2D(x, y)) - min_)/ (max_ - min_) if (max_ - min_) > 0 else 0
-                        dbg.fill_circle(x, y, 2, Color(r=score, g=1-score, b=0.0))
 
     def get_potential_in_pos(self, pos: Point2D):
         (error_flag, output) = self.potential_interp([pos.x, pos.y])
@@ -169,7 +142,6 @@ class VisibleMap:
         # [-wizard_strafe_speed; wizard_strafe_speed)
         value_strafe_right_list = [-1, 0, 1]
         # [-wizard_max_turn_angle; wizard_max_turn_angle]
-        # value_turn_list = np.random.uniform(-game.wizard_max_turn_angle, game.wizard_max_turn_angle, 10) if angle is None else [angle]
         value_turn_list = [(i - 4) / 4 * game.wizard_max_turn_angle for i in range(10)] if angle is None else [angle]
 
         if True:
@@ -189,15 +161,9 @@ class VisibleMap:
                         pos, _ = self.do_move(value_forward, value_strafe_right, value_turn, n_ticks_forward)
                         score = self.get_potential_in_pos(pos)
 
-                        # pos_forward, _ = self.do_move(self.game.wizard_forward_speed,
-                        #                               0, 0, n_ticks_forward)
-                        # score_forward = self.get_potential_in_pos(pos_forward)
-
                         if score > max_score:
-                            optimal_pos = pos
                             optimal_forward, optimal_strafe_right, optimal_turn = value_forward, value_strafe_right, value_turn
                             max_score = score
-
         game = self.game
         max_speed = game.wizard_forward_speed if optimal_forward > 0 else game.wizard_backward_speed
         max_strafe_speed = game.wizard_strafe_speed
