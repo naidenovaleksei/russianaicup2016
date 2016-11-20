@@ -10,6 +10,7 @@ from Planning2 import BattleFront
 import random
 
 WAYPOINT_RADIUS = 100.0
+START_WAIT_TICK = 250
 
 class MyStrategy:
     def __init__(self, me: Wizard = None, world: World = None, game: Game = None, move: Move = None):

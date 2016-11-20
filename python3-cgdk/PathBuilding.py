@@ -13,6 +13,8 @@ import math
 import numpy as np
 import interpolator as interp
 
+n_ticks_forward = 1
+
 class Point2D:
     def __init__(self, x, y):
         self.x = x
@@ -96,8 +98,7 @@ class VisibleMap:
         return potential
 
     def create_potential_map(self, target: Point2D):
-        n_ticks_forward = 2
-        r = self.game.wizard_forward_speed * n_ticks_forward
+        r = self.game.wizard_forward_speed * 2 * n_ticks_forward
         half_n = 3
         k = r / half_n
         range_x = range(-half_n, half_n + 1)
@@ -129,8 +130,6 @@ class VisibleMap:
         return my_position, angle
 
     def get_optimal_move(self, target: Point2D, angle=None):
-        n_ticks_forward = 1
-
         game = self.game
         optimal_forward = 0
         optimal_strafe_right = 0

@@ -99,9 +99,10 @@ class BattleFront:
         self.clear()
         range_ = 1.5 * me.vision_range
 
-        for unit in world.minions + world.buildings:
+        for unit in (world.minions if world.minions is not None else []) + (world.buildings if world.buildings is not None else []):
             if unit.get_distance_to_unit(me) <= range_:
                 self.add_unit(unit)
+
         for wizard in world.wizards:
             if not wizard.me and wizard.get_distance_to_unit(me) <= range_:
                 self.add_unit(wizard)
