@@ -1,4 +1,3 @@
-from model.Game import Game
 from model.World import World
 from model.Wizard import Wizard
 from model.LivingUnit import LivingUnit

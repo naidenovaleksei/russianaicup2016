@@ -1,3 +1,9 @@
+import math
+import numpy as np
+import interpolator as interp
+
+from Points2D import Point2D
+
 from model.Game import Game
 from model.World import World
 from model.Wizard import Wizard
@@ -9,22 +15,7 @@ from model.ActionType import ActionType
 from model.Building import Building
 from model.Faction import Faction
 
-import math
-import numpy as np
-import interpolator as interp
-
 n_ticks_forward = 1
-
-class Point2D:
-    def __init__(self, x, y):
-        self.x = x
-        self.y = y
-
-    def get_distance_to(self, x, y):
-        return math.hypot(self.x - x, self.y - y)
-
-    def get_distance_to_unit(self, unit):
-        return self.get_distance_to(unit.x, unit.y)
 
 
 class VisibleMap:
@@ -141,7 +132,8 @@ class VisibleMap:
         # [-wizard_strafe_speed; wizard_strafe_speed)
         value_strafe_right_list = [-1, 0, 1]
         # [-wizard_max_turn_angle; wizard_max_turn_angle]
-        value_turn_list = [(i - 4) / 4 * game.wizard_max_turn_angle for i in range(10)] if angle is None else [angle]
+        # value_turn_list = [(i - 4) / 4 * game.wizard_max_turn_angle for i in range(10)] if angle is None 
+        value_turn_list = random.uniform(-wizard_max_turn_angle, wizard_max_turn_angle, 10) if angle is None else [angle]
 
         if True:
             for value_forward in value_forward_list:
