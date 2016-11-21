@@ -6,12 +6,11 @@ from model.Faction import Faction
 
 from typing import List
 
-
 class BattleFront:
     canal_width = 800
     base_disp = 400
 
-    def __init__(self, world: World):
+    def __init__(self, world: World, me: Wizard):
         self.left = self.top = 0
         self.bottom = world.height
         self.right = world.width
@@ -21,10 +20,10 @@ class BattleFront:
             LineType.BOTTOM: List[LivingUnit]
         }
         self.world = world
+        self.range_ = 1.5 * me.vision_range
 
     def calc_front_destination(self, line_type: LineType, me: Wizard):
-        path_length = me.vision_range
-        score = 0
+        path_length = 2 * self.range_
         me_pos = me.x + (self.bottom - me.y)
         friend_sum_pos = 0
         friend_sum_life = 0
@@ -49,10 +48,12 @@ class BattleFront:
         else:
             enemy_sum_pos = path_length
 
-        if enemy_sum_life + friend_sum_life > 0:
-            common_pos = (friend_sum_pos * enemy_sum_life + enemy_sum_pos * friend_sum_life) / (enemy_sum_life + friend_sum_life)
-        else:
-            common_pos = path_length
+        # if enemy_sum_life + friend_sum_life > 0:
+        #     common_pos = (friend_sum_pos * enemy_sum_life + enemy_sum_pos * friend_sum_life) / (enemy_sum_life + friend_sum_life)
+        # else:
+        #     common_pos = path_length
+
+        common_pos = friend_sum_pos + enemy_sum_pos
 
         return common_pos / path_length
 
@@ -96,12 +97,11 @@ class BattleFront:
     def init(self, world: World, me: Wizard):
         self.world = world
         self.clear()
-        range_ = 1.5 * me.vision_range
 
         for unit in (world.minions if world.minions is not None else []) + (world.buildings if world.buildings is not None else []):
-            if unit.get_distance_to_unit(me) <= range_:
+            if unit.get_distance_to_unit(me) <= self.range_:
                 self.add_unit(unit)
 
         for wizard in world.wizards:
-            if not wizard.me and wizard.get_distance_to_unit(me) <= range_:
+            if not wizard.me and wizard.get_distance_to_unit(me) <= self.range_:
                 self.add_unit(wizard)

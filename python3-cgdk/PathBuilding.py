@@ -44,6 +44,12 @@ class VisibleMap:
         dist = pos.get_distance_to_unit(goal)
         return 1 / dist if dist > 0 else float("inf")
 
+    # проверить
+    def get_score_to_goal_ex(self, pos: Point2D, goal: Point2D, angle: float):
+        dist = pos.get_distance_to_unit(goal)
+        angle_score = 1 - abs(pos.get_angle_to_point(goal, angle)) / math.pi
+        return angle_score / dist if dist > 0 else float("inf")
+
     def get_score_to_neutral(self, point: Point2D, unit: CircularUnit):
         if unit.id == self.me.id:
             return 0
@@ -109,7 +115,26 @@ class VisibleMap:
             if self.me.get_distance_to_unit(unit_nearby) < view_radius:
                 if self.is_enemy(unit_nearby):
                     potential += self.get_score_to_enemy(pos, unit_nearby)
-                elif self.is_dengerous_projectile(unit_nearby):
+                elif self.is_dengerous_projectile(pos, unit_nearby):
+                    potential += self.get_score_to_projectile(pos, unit_nearby)
+                else:
+                    potential += self.get_score_to_neutral(pos, unit_nearby)
+        return potential
+
+    def calc_potential_ex(self, pos: Point2D, target: Point2D, angle: float):
+        view_radius = 200
+        units = self.world.buildings + \
+                self.world.wizards + \
+                self.world.minions + \
+                self.world.bonuses + \
+                self.world.projectiles + \
+                self.world.trees
+        potential = self.get_score_to_goal_ex(pos, target, angle)
+        for unit_nearby in units:
+            if self.me.get_distance_to_unit(unit_nearby) < view_radius:
+                if self.is_enemy(unit_nearby):
+                    potential += self.get_score_to_enemy(pos, unit_nearby)
+                elif self.is_dengerous_projectile(pos, unit_nearby):
                     potential += self.get_score_to_projectile(pos, unit_nearby)
                 else:
                     potential += self.get_score_to_neutral(pos, unit_nearby)
@@ -147,12 +172,12 @@ class VisibleMap:
             my_position.y += forward_speed * sin_x + strafe_speed * cos_x
         return my_position, angle
 
-    def get_optimal_move(self, target: Point2D, angle=None):
+    def get_optimal_move(self, target: Point2D, angle=None, note_angle=False):
         game = self.game
         optimal_forward = 0
         optimal_strafe_right = 0
         optimal_turn = 0
-        max_score = 0
+        max_score = float("-inf")
 
         # [-wizard_backward_speed; wizard_forward_speed]
         value_forward_list = [-self.game.wizard_backward_speed, 0, self.game.wizard_forward_speed]
@@ -163,12 +188,15 @@ class VisibleMap:
         # ввели случайную состовляющую поворота. должна помочь выбираться из тупиковых ситуаций
         value_turn_list = np.random.uniform(-game.wizard_max_turn_angle, game.wizard_max_turn_angle, 10) if angle is None else [angle]
 
-        if True:
+        if True or note_angle:
             for value_forward in value_forward_list:
                 for value_strafe_right in value_strafe_right_list:
                     for value_turn in value_turn_list:
-                        pos, _ = self.do_move(value_forward, value_strafe_right, value_turn, n_ticks_forward)
-                        score = self.calc_potential(pos, target)
+                        pos, angle = self.do_move(value_forward, value_strafe_right, value_turn, n_ticks_forward)
+                        if note_angle:
+                            score = self.calc_potential_ex(pos, target, angle)
+                        else:
+                            score = self.calc_potential(pos, target)
                         if score > max_score:
                             optimal_forward, optimal_strafe_right, optimal_turn = value_forward, value_strafe_right, value_turn
                             max_score = score
