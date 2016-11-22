@@ -7,6 +7,8 @@ from model.Game import Game
 from model.Move import Move
 from model.Wizard import Wizard
 from model.World import World
+from model.LivingUnit import LivingUnit
+from model.Tree import Tree
 
 WAYPOINT_RADIUS = 100.00
 LOW_HP_FACTOR = 0.25
@@ -48,6 +50,16 @@ class Point2D:
         return self.get_angle_to(unit.x, unit.y, angle)
 
 
+def is_enemy(unit: LivingUnit, me: Wizard):
+    # return unit.faction != self.me.faction and unit.faction != Faction.NEUTRAL and (type(unit) is Wizard or type(unit) is Building or type(unit) is Minion)
+    return not ((unit.faction == Faction.NEUTRAL and unit.life == unit.max_life) or (unit.faction == me.faction) or (isinstance(unit, Tree)))
+
+
+def min_atack_distance(me: Wizard):
+    one_more_closer = 5
+    return me.cast_range - one_more_closer
+
+
 def get_nearest_target(me: Wizard, world: World):
     """
     Находим ближайшую цель для атаки, независимо от её типа и других характеристик.
@@ -62,8 +74,9 @@ def get_nearest_target(me: Wizard, world: World):
 
     for target in targets:
         # Нейтралов атакуем тоже если их хп меньше максимального - они стригеренны
-        if (target.faction == Faction.NEUTRAL and target.life == target.max_life) or \
-                 (target.faction == me.faction):
+        # if (target.faction == Faction.NEUTRAL and target.life == target.max_life) or \
+        #          (target.faction == me.faction):
+        if not is_enemy(target, me):
             continue
 
         distance = me.get_distance_to_unit(target)

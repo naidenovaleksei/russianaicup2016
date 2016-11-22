@@ -3,7 +3,7 @@ from typing import List
 
 from PathBuilding import VisibleMap
 from Planning2 import BattleFront
-from Points2D import Point2D
+from Points2D import Point2D, min_atack_distance
 import Points2D
 
 from model.ActionType import ActionType
@@ -17,6 +17,7 @@ START_WAIT_TICK = 250
 START_SCORE_TRESHOLD = 0.0
 START_LIMIT_UP_TIMES = 10
 STOP_CHECK_TICK_COUNT = 10
+SLOW_MOVE_TICK_COUNT = 500
 
 class Health:
     Bad = 1
@@ -69,7 +70,8 @@ class MyStrategy:
 
         if common_score < score_threshold:
             previous_waypoint = Points2D.get_previous_waypoint(self.waypoints, me)
-            self.go_to(move, previous_waypoint)
+            self.map.note_enemy_angle = False
+            self.go_to(move, previous_waypoint, note_angle=False)
             self.last_actions[world.tick_index % STOP_CHECK_TICK_COUNT] = Action.BACK
             return
         else:
@@ -79,7 +81,8 @@ class MyStrategy:
 
                 if distance <= me.cast_range:
                     angle = me.get_angle_to_unit(nearest_target)
-                    move.turn = angle
+                    # move.turn = angle
+                    self.go_to(move, None, note_angle=False)
                     if abs(angle) < game.staff_sector / 2.0:
                         move.action = ActionType.MAGIC_MISSILE
                         move.cast_angle = angle
@@ -87,9 +90,8 @@ class MyStrategy:
                     self.last_actions[world.tick_index % STOP_CHECK_TICK_COUNT] = Action.ENEMY
                     return
                 else:
-                    one_more_closer = 5
-                    new_x = me.x + (nearest_target.x - me.x) / distance * (distance - me.cast_range + one_more_closer)
-                    new_y = me.y + (nearest_target.y - me.y) / distance * (distance - me.cast_range + one_more_closer)
+                    new_x = me.x + (nearest_target.x - me.x) / distance * (distance - min_atack_distance(me))
+                    new_y = me.y + (nearest_target.y - me.y) / distance * (distance - min_atack_distance(me))
                     self.go_to(move, Point2D(new_x, new_y), note_angle=True)
                     self.last_actions[world.tick_index % STOP_CHECK_TICK_COUNT] = Action.NEXT
                     return
@@ -105,6 +107,9 @@ class MyStrategy:
                         note_angle = False
                 self.go_to(move, next_waypoint, note_angle=note_angle)
                 self.last_actions[world.tick_index % STOP_CHECK_TICK_COUNT] = Action.NEXT
+                if world.tick_index < SLOW_MOVE_TICK_COUNT:
+                    move.speed *= 0.5
+                    move.strafe_speed *= 0.5
                 return
 
     def initialize_tick(self, me: Wizard, world: World, game: Game):
