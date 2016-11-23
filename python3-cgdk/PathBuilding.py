@@ -88,8 +88,8 @@ class VisibleMap:
             danger_radius = (unit).attack_range
             coef *= self.game.guardian_tower_damage
         elif type(unit) is Minion:
-            # danger_radius = min_atack_distance(self.me) / 2
-            danger_radius = self.game.orc_woodcutter_attack_range if (unit).type == MinionType.ORC_WOODCUTTER else self.game.fetish_blowdart_attack_range
+            danger_radius = min_atack_distance(self.me) / 2
+            # danger_radius = self.game.orc_woodcutter_attack_range if (unit).type == MinionType.ORC_WOODCUTTER else self.game.fetish_blowdart_attack_range
             coef *= self.game.orc_woodcutter_damage if (unit).type == MinionType.ORC_WOODCUTTER else self.game.dart_direct_damage
         else:
             danger_radius = 1
@@ -104,7 +104,8 @@ class VisibleMap:
             coef *= 100
 
         dist = point.get_distance_to_unit(unit) - self.me.radius
-        return self.get_negative_linear_score(dist, danger_radius, enemy_coef)
+        score = self.get_negative_linear_score(dist, danger_radius, enemy_coef)
+        return score if (dist <= danger_radius or danger_radius == 0) else (1 / dist - 1 / danger_radius)
 
     def get_score_to_nearest_enemy(self, point: Point2D, unit: LivingUnit):
         coef = enemy_coef
@@ -251,6 +252,8 @@ class VisibleMap:
         # value_turn_list = [(i - 4) / 4 * game.wizard_max_turn_angle for i in range(10)] if angle is None
         # ввели случайную состовляющую поворота. должна помочь выбираться из тупиковых ситуаций
         value_turn_list = np.random.uniform(-game.wizard_max_turn_angle, game.wizard_max_turn_angle, 10) if angle is None else [angle]
+        np.random.shuffle(value_forward_list)
+        np.random.shuffle(value_strafe_right_list)
 
         # if True or note_angle:
         for value_forward in value_forward_list:

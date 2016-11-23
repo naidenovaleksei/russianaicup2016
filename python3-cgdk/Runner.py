@@ -4,12 +4,12 @@ from MyStrategy import MyStrategy
 from RemoteProcessClient import RemoteProcessClient
 from model.Move import Move
 
-import os
-os.chdir("..\\local-runner-ru")
-os.system("local-runner-sync.bat")
-
-import time
-time.sleep(5)
+# import os
+# os.chdir("..\\local-runner-ru")
+# os.system("local-runner-sync.bat")
+#
+# import time
+# time.sleep(5)
 
 class Runner:
     def __init__(self):
