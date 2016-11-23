@@ -54,6 +54,9 @@ def is_enemy(unit: LivingUnit, me: Wizard):
     # return unit.faction != self.me.faction and unit.faction != Faction.NEUTRAL and (type(unit) is Wizard or type(unit) is Building or type(unit) is Minion)
     return not ((unit.faction == Faction.NEUTRAL and unit.life == unit.max_life) or (unit.faction == me.faction) or (isinstance(unit, Tree)))
 
+def is_neutral(unit: LivingUnit):
+    return (unit.faction == Faction.NEUTRAL) or (isinstance(unit, Tree))
+
 
 def min_atack_distance(me: Wizard):
     one_more_closer = 5
@@ -85,6 +88,25 @@ def get_nearest_target(me: Wizard, world: World):
             nearest_target_distance = distance
 
     return nearest_target
+
+
+def get_nearest_neutral(me: Wizard, world: World):
+    targets = []
+    targets.extend(world.trees)
+    targets.extend(world.minions)
+
+    nearest_neutral = None
+    nearest_neutral_distance = me.cast_range
+
+    for target in targets:
+        if is_neutral(target):
+            distance = me.get_distance_to_unit(target)
+            if distance < nearest_neutral_distance:
+                nearest_neutral = target
+                nearest_neutral_distance = distance
+
+    return nearest_neutral
+
 
 def apply_go_to_move(point: Point2D, me: Wizard, game: Game, move: Move):
     """

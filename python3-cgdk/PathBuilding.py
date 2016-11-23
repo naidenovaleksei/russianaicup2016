@@ -33,6 +33,8 @@ class VisibleMap:
         self.me = me
         # self.potential_interp = None
         self.note_enemy_angle = True
+        self.neutral_coef = 1
+        self.neutral_dist_coef = 1
 
     def init_tick(self, me: Wizard, world: World, game: Game):
         self.world = world
@@ -40,6 +42,8 @@ class VisibleMap:
         self.me = me
         np.random.seed(game.random_seed % 0xFFFFFFFF)
         self.note_enemy_angle = True
+        self.neutral_coef = neutral_coef * np.random.normal(1, 0.3)
+        self.neutral_dist_coef = 1
 
     def get_negative_linear_score(self, dist, max_dist, coef):
         if dist <= 0:
@@ -66,8 +70,9 @@ class VisibleMap:
         dist = point.get_distance_to_unit(unit) - self.me.radius - unit.radius
         raduis = max(unit.radius / 4, self.me.radius / 2)
         # raduis = unit.radius / 4
-        raduis *= np.random.normal(1, 0.1)
-        return self.get_negative_linear_score(dist, raduis, neutral_coef)
+        raduis *= np.random.normal(self.neutral_dist_coef, 0.1 * self.neutral_dist_coef)
+        coef = self.neutral_coef * np.random.normal(1, 0.1)
+        return self.get_negative_linear_score(dist, raduis, coef)
 
     def get_score_to_enemy(self, point: Point2D, unit: LivingUnit):
         coef = enemy_coef

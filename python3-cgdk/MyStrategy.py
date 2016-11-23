@@ -1,5 +1,6 @@
 import random
 from typing import List
+import numpy as np
 
 from PathBuilding import VisibleMap
 from Planning2 import BattleFront
@@ -17,7 +18,7 @@ START_WAIT_TICK = 250
 START_SCORE_TRESHOLD = 0.0
 START_LIMIT_UP_TIMES = 10
 STOP_CHECK_TICK_COUNT = 10
-SLOW_MOVE_TICK_COUNT = 500
+SLOW_MOVE_TICK_COUNT = 650
 
 class Health:
     Bad = 1
@@ -105,6 +106,8 @@ class MyStrategy:
                     if ((dist_last_poses < STOP_CHECK_TICK_COUNT * 0.2 * game.wizard_forward_speed) and
                                       (sum([x == Action.NEXT for x in self.last_actions]) == STOP_CHECK_TICK_COUNT)):
                         note_angle = False
+                        self.map.neutral_coef = 1000 * np.random.normal(1, 0.3)
+                        self.map.neutral_dist_coef = 1000
                 self.go_to(move, next_waypoint, note_angle=note_angle)
                 self.last_actions[world.tick_index % STOP_CHECK_TICK_COUNT] = Action.NEXT
                 if world.tick_index < SLOW_MOVE_TICK_COUNT:
