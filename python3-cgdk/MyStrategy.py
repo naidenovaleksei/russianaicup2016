@@ -69,6 +69,17 @@ class MyStrategy:
         else:
             common_score = wizard_score
 
+        nearest_target = Points2D.get_nearest_target(me, world)
+        if nearest_target is not None:
+            distance = me.get_distance_to_unit(nearest_target)
+            angle = me.get_angle_to_unit(nearest_target)
+            if (distance <= game.staff_range) and (abs(angle) < game.staff_sector / 2.0):
+                move.action = ActionType.STAFF
+            elif (distance <= me.cast_range) and (abs(angle) < game.staff_sector / 2.0):
+                move.action = ActionType.MAGIC_MISSILE
+                move.cast_angle = angle
+                move.min_cast_distance = distance - nearest_target.radius + game.magic_missile_radius
+
         if common_score < score_threshold:
             previous_waypoint = Points2D.get_previous_waypoint(self.waypoints, me)
             self.map.note_enemy_angle = False
@@ -79,10 +90,8 @@ class MyStrategy:
             nearest_target = Points2D.get_nearest_target(me, world)
             if nearest_target is not None:
                 distance = me.get_distance_to_unit(nearest_target)
-
+                angle = me.get_angle_to_unit(nearest_target)
                 if distance <= me.cast_range:
-                    angle = me.get_angle_to_unit(nearest_target)
-                    # move.turn = angle
                     self.go_to(move, None, note_angle=False)
                     if abs(angle) < game.staff_sector / 2.0:
                         move.action = ActionType.MAGIC_MISSILE
@@ -91,8 +100,9 @@ class MyStrategy:
                     self.last_actions[world.tick_index % STOP_CHECK_TICK_COUNT] = Action.ENEMY
                     return
                 else:
-                    new_x = me.x + (nearest_target.x - me.x) / distance * (distance - min_atack_distance(me))
-                    new_y = me.y + (nearest_target.y - me.y) / distance * (distance - min_atack_distance(me))
+                    min_attack_dist = min_atack_distance(me) * self.life_coef
+                    new_x = me.x + (nearest_target.x - me.x) / distance * (distance - min_attack_dist)
+                    new_y = me.y + (nearest_target.y - me.y) / distance * (distance - min_attack_dist)
                     self.go_to(move, Point2D(new_x, new_y), note_angle=True)
                     self.last_actions[world.tick_index % STOP_CHECK_TICK_COUNT] = Action.NEXT
                     return
@@ -117,6 +127,7 @@ class MyStrategy:
 
     def initialize_tick(self, me: Wizard, world: World, game: Game):
         self.map.init_tick(me, world, game)
+        self.map.life_coef = self.life_coef = 1 - 0.5 * me.life / me.max_life
         self.last_poses[world.tick_index % STOP_CHECK_TICK_COUNT] = Point2D(me.x, me.y)
         wizard_ratio = me.life / me.max_life
         if wizard_ratio <= 0.25:

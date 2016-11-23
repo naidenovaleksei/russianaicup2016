@@ -17,7 +17,7 @@ from model.Faction import Faction
 from model.Projectile import Projectile
 
 n_ticks_forward = 1
-neutral_coef = 0.1 # - 0.01
+neutral_coef = 0.05 # - 0.01
 enemy_coef = 1
 projectile_coef = 10
 
@@ -35,6 +35,7 @@ class VisibleMap:
         self.note_enemy_angle = True
         self.neutral_coef = 1
         self.neutral_dist_coef = 1
+        self.life_coef = 1
 
     def init_tick(self, me: Wizard, world: World, game: Game):
         self.world = world
@@ -44,6 +45,7 @@ class VisibleMap:
         self.note_enemy_angle = True
         self.neutral_coef = neutral_coef * np.random.normal(1, 0.3)
         self.neutral_dist_coef = 1
+        # self.life_coef = 1 - 0.5 * me.life / me.max_life
 
     def get_negative_linear_score(self, dist, max_dist, coef):
         if dist <= 0:
@@ -54,7 +56,7 @@ class VisibleMap:
             return 0
 
     def get_score_to_goal(self, pos: Point2D, goal: Point2D):
-        dist = pos.get_distance_to_unit(goal) if goal is not None else 1
+        dist = pos.get_distance_to_unit(goal) if goal is not None else 0
         # dist = pos.get_distance_to_unit(goal)
         return 1 / dist if dist > 0 else float("inf")
 
@@ -78,14 +80,16 @@ class VisibleMap:
         coef = enemy_coef
         # danger_radius = 1
         if type(unit) is Wizard:
-            danger_radius = min_atack_distance(self.me) - self.me.radius # (unit).cast_range
+            # danger_radius = min_atack_distance(self.me) - self.me.radius # (unit).cast_range
+            danger_radius = (unit).cast_range
             coef *= self.game.magic_missile_direct_damage
         elif type(unit) is Building:
-            danger_radius = min_atack_distance(self.me) - self.me.radius # (unit).attack_range
+            # danger_radius = min_atack_distance(self.me) - self.me.radius # (unit).attack_range
+            danger_radius = (unit).attack_range
             coef *= self.game.guardian_tower_damage
         elif type(unit) is Minion:
-            danger_radius = min_atack_distance(self.me) / 2
-            # danger_radius = self.game.orc_woodcutter_attack_range if (unit).type == MinionType.ORC_WOODCUTTER else self.game.fetish_blowdart_attack_range
+            # danger_radius = min_atack_distance(self.me) / 2
+            danger_radius = self.game.orc_woodcutter_attack_range if (unit).type == MinionType.ORC_WOODCUTTER else self.game.fetish_blowdart_attack_range
             coef *= self.game.orc_woodcutter_damage if (unit).type == MinionType.ORC_WOODCUTTER else self.game.dart_direct_damage
         else:
             danger_radius = 1
@@ -94,6 +98,7 @@ class VisibleMap:
         # danger_radius = max(min(min_atack_distance(self.me) - self.me.radius, danger_radius), min_atack_distance(self.me) / 2)
         # min_atack_distance(self.me) - self.me.radius
 
+        danger_radius = min(danger_radius, min_atack_distance(self.me) - self.me.radius) * self.life_coef
 
         if self.me.remaining_cooldown_ticks_by_action[ActionType.MAGIC_MISSILE] > 0:
             coef *= 100
@@ -116,6 +121,7 @@ class VisibleMap:
             danger_radius = 1
 
         danger_radius += self.me.radius
+
         # danger_radius *= 1.5
         # danger_radius = max(min(min_atack_distance(self.me) - self.me.radius, danger_radius), min_atack_distance(self.me) / 2)
 
@@ -172,16 +178,19 @@ class VisibleMap:
                 self.world.projectiles + \
                 self.world.trees
         potential = self.get_score_to_goal_ex(pos, target, angle) if note_angle else self.get_score_to_goal(pos, target)
-        max_score_to_enemy = float("-inf")
+        max_score_to_enemy = float("inf")
         for unit_nearby in units:
             if self.me.get_distance_to_unit(unit_nearby) < view_radius:
                 if is_enemy(unit_nearby, self.me):
-                    max_score_to_enemy = max(max_score_to_enemy, self.get_score_to_enemy(pos, unit_nearby))
+                    # max_score_to_enemy = min(max_score_to_enemy, self.get_score_to_enemy(pos, unit_nearby))
+                    max_score_to_enemy = min(max_score_to_enemy, self.get_score_to_enemy(pos, unit_nearby))
+                    # potential += self.get_score_to_enemy(pos, unit_nearby)
                 elif self.is_dengerous_projectile(pos, unit_nearby):
                     potential += self.get_score_to_projectile(pos, unit_nearby)
                 else:
                     potential += self.get_score_to_neutral(pos, unit_nearby)
-        if max_score_to_enemy > float("-inf"):
+        assert max_score_to_enemy <= 0 or max_score_to_enemy == float("inf")
+        if max_score_to_enemy < float("inf"):
             potential += max_score_to_enemy
         nearest_target = get_nearest_target(self.me, self.world)
         if self.note_enemy_angle and nearest_target and (pos.get_distance_to_unit(nearest_target) < 1.4 * self.me.cast_range):

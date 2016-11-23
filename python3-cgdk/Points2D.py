@@ -166,6 +166,8 @@ def get_waypoints_by_id(id, game: Game):
             Point2D(100.0, map_size - 100.0),
             random.choice([Point2D(600.0, map_size - 200.0), Point2D(200.0, map_size - 600.0)]),
             Point2D(800.0, map_size - 800.0),
+            Point2D(1600.0, map_size - 1600.0),
+            Point2D(2200.0, map_size - 2200.0),
             Point2D(map_size - 600.0, 600.0)
         ]
     else:
