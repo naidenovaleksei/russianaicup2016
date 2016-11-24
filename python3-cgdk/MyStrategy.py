@@ -1,5 +1,6 @@
 
 from Behaviour import *
+from Path import *
 from Points2D import Point2D
 
 from model.ActionType import ActionType
@@ -7,10 +8,15 @@ from model.Game import Game
 from model.Move import Move
 from model.Wizard import Wizard
 from model.World import World
+from model.LivingUnit import LivingUnit
+from model.Bonus import Bonus
 
 
 
 class MyStrategy:
+    def initialize(self, me: Wizard, world: World, game: Game, move: Move):
+        self.Map = TilesMap(game)
+
     def init_tick(self, me: Wizard, world: World, game: Game, move: Move):
         self.me = me
         self.world = world
@@ -37,14 +43,15 @@ class MyStrategy:
 
         # move/turn action
         nearest_bonus = self.see_bonus(me, world, game, move)
+        nearest_enemy = self.see_enemy(me, world, game, move)
         if nearest_bonus:
-            self.go_to_bonus(nearest_bonus)
+            self.move_to_bonus(nearest_bonus)
         elif self.forced_to_retreat(me, world, game, move):
             self.retreat(me, world, game, move)
         elif self.can_turn_to_bonus(me, world, game, move):
-            self.turn_to_bonus(me, world, game, move)
-        elif can_go_to_enemy:
-            go_to_enemy
+            self.go_to_bonus(me, world, game, move)
+        elif nearest_enemy:
+            self.move_to_enemy(nearest_bonus)
         elif self.can_go_forward(me, world, game, move):
             self.go_forward(me, world, game, move)
         else:
@@ -98,29 +105,60 @@ class MyStrategy:
 
         return target_bonus
 
-    def go_to_bonus(self, bonus: Bonus, me: Wizard, world: World, game: Game, move: Move):
+    def move_to_bonus(self, bonus: Bonus, me: Wizard, world: World, game: Game, move: Move):
         assert isinstance(bonus, Bonus)
         self.go_to(bonus, me, world, game, move, check_angle=False)
 
 
     ### RETREAT ###
 
-    def forced_to_retreat(self, bonus: Bonus, me: Wizard, world: World, game: Game, move: Move):
+    def forced_to_retreat(self, me: Wizard, world: World, game: Game, move: Move):
         life_score = me.life / me.max_life
         return life_score < 0.5
 
     def retreat(self, me: Wizard, world: World, game: Game, move: Move):
-        previous_point = Point2D(0,0)
+        previous_point = self.Map.get_prev_waypoint(me)
         self.go_to(previous_point, me, world, game, move, check_angle=False)
+
+
+    ### GO_TO_BONUS ###
+
+    # проверить
+    def can_turn_to_bonus(self, me: Wizard, world: World, game: Game, move: Move):
+        return abs((me.x // 400.0) - (me.y // 400.0)) <= 1
+
+    def go_to_bonus(self, me: Wizard, world: World, game: Game, move: Move):
+        next_bonus_point = self.Map.get_next_waypoint_to_bonus(me)
+        self.go_to(next_bonus_point, me, world, game, move, check_angle=True)
+
+
+    ### BONUS ###
+
+    def see_enemy(self, me: Wizard, world: World, game: Game, move: Move):
+        target_enemy = None
+        units = []
+        units.extend(world.wizards)
+        units.extend(world.buildings)
+        units.extend(world.minions)
+
+        enemies = get_nearby_enemies(units, me)
+        # if len(bonuses) > 0:
+        #     target_bonus = sorted(bonuses, key=self.distance_to_me)[0]
+
+        return target_enemy
+
+    def move_to_bonus(self, bonus: Bonus, me: Wizard, world: World, game: Game, move: Move):
+        assert isinstance(bonus, Bonus)
+        self.go_to(bonus, me, world, game, move, check_angle=False)
 
 
     ### FORWARD ###
 
-    def can_go_forward(self, bonus: Bonus, me: Wizard, world: World, game: Game, move: Move):
+    def can_go_forward(self, me: Wizard, world: World, game: Game, move: Move):
         return True
 
     def go_forward(self, me: Wizard, world: World, game: Game, move: Move):
-        next_point = Point2D(0, 0)
+        next_point = self.Map.get_next_waypoint(me)
         self.go_to(next_point, me, world, game, move, check_angle=True)
 
 
